@@ -104,6 +104,13 @@ class DataSet():
         for freq in sorted(self.data.keys()):
             yield [Datapoint(freq, z.real, z.imag) for z in self.data[freq]]
 
+    def items_field(self, field) -> Iterator['Datapoint']:
+        i = self.fields.index(field)
+        for freq in sorted(self.data.keys()):
+            yield Datapoint(freq,
+                            self.data[freq][i].real,
+                            self.data[freq][i].imag)
+
     def items_complex(self) -> Iterator[Tuple[int, List[complex]]]:
         for freq in sorted(self.data.keys()):
             yield (freq, self.data[freq])
@@ -113,14 +120,48 @@ class DataSet():
 
     def max_freq(self) -> int:
         return max(self.data.keys())
-    
+
     def gen_interpolation(self):
-        self.interp = []
-        for i in range(self.fields):
-            d
+        for i in range(len(self.fields)):
+            freqs = []
+            reals = []
+            imags = []
+            for freq, data in self.items_complex():
+                freqs.append(freq)
+                reals.append(data[i].real)
+                imags.append(data[i].imag)
+            self.interp.append((
+                interp1d(freqs, reals, kind="slinear",
+                         fill_value=(reals[0], reals[-1]),
+                         bounds_error=False),
+                interp1d(freqs, imags, kind="slinear",
+                         fill_value=(imags[0], imags[-1]),
+                         bounds_error=False)))
+        self.inter_valid = True
 
+    def freq(self, freq: int) -> List['Datapoint']:
+        if not self.inter_valid:
+            self.gen_interpolation()
+        return [Datapoint(freq, float(i[0](freq)), float(i[1](freq)))
+                for i in self.interp]
 
+    def freq_complex(self, freq: int) -> List[complex]:
+        if not self.inter_valid:
+            self.gen_interpolation()
+        return [complex(float(i[0](freq)), float(i[1](freq)))
+                for i in self.interp]
 
+    def freq_field(self, freq: int, field) -> 'Datapoint':
+        if not self.inter_valid:
+            self.gen_interpolation()
+        i = self.interp[self.fields.index(field)]
+        return Datapoint(freq, float(i[0](freq)), float(i[1](freq)))
+
+    def freq_field_complex(self, freq: int, field) -> complex:
+        if not self.inter_valid:
+            self.gen_interpolation()
+        i = self.interp[self.fields.index(field)]
+        return complex(float(i[0](freq)), float(i[1](freq)))
 
 
 def gamma_to_impedance(gamma: complex, ref_impedance: float = 50) -> complex:

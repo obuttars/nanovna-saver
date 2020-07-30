@@ -21,14 +21,9 @@ import cmath
 from threading import Lock
 from typing import Iterator, List, NamedTuple, Tuple
 
-import numpy as np
 from scipy.interpolate import interp1d
 
-from NanoVNASaver.SITools import Format, clamp_value
-
-FMT_FREQ = Format()
-FMT_SHORT = Format(max_nr_digits=4)
-FMT_SWEEP = Format(max_nr_digits=9, allow_strip=True)
+from NanoVNASaver.SITools import clamp_value
 
 
 class Datapoint(NamedTuple):
@@ -87,6 +82,12 @@ class DataSet():
         self.interp = []
         self.inter_valid = False
         self.lock = Lock()
+
+    def copy(self)-> 'Dataset':
+        ds = DataSet(self.fields)
+        ds.data = self.data.copy()
+        ds.inter_valid = False
+        return ds
 
     def insert(self, datapoints: List['Datapoint']):
         assert len(datapoints) == len(self.fields)
@@ -212,7 +213,6 @@ def norm_to_impedance(z: complex, ref_impedance: float = 50) -> complex:
 def parallel_to_serial(z: complex) -> complex:
     """Convert parallel impedance to serial impedance equivalent"""
     z_sq_sum = z.real ** 2 + z.imag ** 2
-    # TODO: Fix divide by zero
     return complex(z.real * z.imag ** 2 / z_sq_sum,
                    z.real ** 2 * z.imag / z_sq_sum)
 
@@ -227,9 +227,6 @@ def serial_to_parallel(z: complex) -> complex:
     z_sq_sum = z.real ** 2 + z.imag ** 2
     if z.real == 0 and z.imag == 0:
         return complex(math.inf, math.inf)
-    # only possible if real and imag == 0, therefor commented out
-    # if z_sq_sum == 0:
-    #     return complex(0, 0)
     if z.imag == 0:
         return complex(z_sq_sum / z.real, math.copysign(math.inf, z_sq_sum))
     if z.real == 0:

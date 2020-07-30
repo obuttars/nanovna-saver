@@ -26,7 +26,7 @@ from typing import List
 
 from scipy.interpolate import interp1d
 
-from NanoVNASaver.RFTools import Datapoint
+from NanoVNASaver.RFTools import Datapoint, DataSet
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +148,12 @@ class Touchstone:
         return Datapoint(freq,
                          float(self._interp[name]["real"](freq)),
                          float(self._interp[name]["imag"](freq)))
+
+    def get_dataset(self) -> 'DataSet':
+        ds = DataSet(("11", "21", "12", "22"))
+        for d in zip(*self.sdata):
+            ds.insert(d)
+        return ds
 
     def min_freq(self) -> int:
         return self.s("11")[0].freq
